@@ -80,6 +80,10 @@ button {
   color: #fff;
   font-weight: 650;
 }
+.install {
+  margin-left: auto;
+  padding: 8px 16px;
+}
 .primary:disabled {
   opacity: 0.45;
 }

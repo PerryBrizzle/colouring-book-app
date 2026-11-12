@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { deletePuzzle, LIBRARY_CHANGED, listPuzzles } from '../db';
+import { canInstall, onInstallChange, promptInstall } from '../install';
 import type { PuzzleMeta } from '../types';
 
 interface Props {
@@ -11,6 +12,7 @@ export function HomeScreen({ onNew, onOpen }: Props) {
   const [items, setItems] = useState<PuzzleMeta[] | null>(null);
   const [error, setError] = useState('');
   const input = useRef<HTMLInputElement>(null);
+  const installable = useSyncExternalStore(onInstallChange, canInstall);
 
   const refresh = () =>
     listPuzzles()
@@ -32,6 +34,11 @@ export function HomeScreen({ onNew, onOpen }: Props) {
     <div className="screen home">
       <header className="bar">
         <h1>Colouring Book</h1>
+        {installable && (
+          <button className="primary install" onClick={() => void promptInstall()}>
+            Install app
+          </button>
+        )}
       </header>
 
       <main className="library">
