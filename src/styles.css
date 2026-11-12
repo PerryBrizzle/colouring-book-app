@@ -1,0 +1,343 @@
+:root {
+  --bg: #1f1d2b;
+  --bg-raised: #2a2838;
+  --line: #3a3850;
+  --text: #f1f0f7;
+  --muted: #a3a1b8;
+  --accent: #8b7cf6;
+  --stage: #d9d9e3;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.screen {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Top bar ---- */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  min-height: 56px;
+}
+.bar h1 {
+  font-size: 18px;
+  font-weight: 650;
+  margin: 0;
+}
+.icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+  background: var(--bg-raised);
+}
+.pill {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  font-weight: 600;
+}
+.primary {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 650;
+}
+.primary:disabled {
+  opacity: 0.45;
+}
+.link {
+  color: var(--muted);
+  font-size: 13px;
+}
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.progress {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.meter {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.meter > div {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+/* ---- Library ---- */
+.home {
+  overflow-y: auto;
+}
+.library {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  padding: 4px 12px 24px;
+}
+.card {
+  background: var(--bg-raised);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.card.new {
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 2px dashed var(--line);
+  background: none;
+  font-weight: 600;
+}
+.card.new .plus {
+  font-size: 40px;
+  line-height: 1;
+  color: var(--accent);
+}
+.thumb {
+  aspect-ratio: 1;
+  background: #fff;
+  display: block;
+  width: 100%;
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.card-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px 6px;
+  font-weight: 600;
+}
+.card .meter {
+  margin: 0 10px 10px;
+}
+.notice {
+  text-align: center;
+  color: var(--muted);
+  padding: 8px 24px;
+}
+
+/* ---- Canvas area ---- */
+.stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: var(--stage);
+  overflow: hidden;
+}
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  display: block;
+}
+.veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: var(--stage);
+  color: #3b3950;
+  font-weight: 600;
+}
+.veil.light {
+  background: rgba(217, 217, 227, 0.55);
+  pointer-events: none;
+}
+.spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 4px solid rgba(60, 58, 80, 0.2);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.segmented {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(31, 29, 43, 0.88);
+  white-space: nowrap;
+}
+.segmented button {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.segmented button.on {
+  background: var(--accent);
+  color: #fff;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: rgba(31, 29, 43, 0.94);
+  font-size: 17px;
+  white-space: nowrap;
+}
+.toast > div {
+  display: flex;
+  gap: 8px;
+  font-size: 15px;
+}
+
+/* ---- Convert settings ---- */
+.panel {
+  padding: 12px 16px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.panel label span {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+}
+.panel label b {
+  color: var(--text);
+}
+.panel input[type='range'] {
+  width: 100%;
+  height: 28px;
+  accent-color: var(--accent);
+}
+.panel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ---- Palette ---- */
+.palette {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 10px 10px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  scrollbar-width: none;
+}
+.palette::-webkit-scrollbar {
+  display: none;
+}
+.swatch {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 14px;
+}
+.swatch .dot {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  transition: transform 0.12s;
+}
+.swatch .count {
+  font-size: 11px;
+  color: var(--muted);
+}
+.swatch.on {
+  background: var(--bg-raised);
+}
+.swatch.on .dot {
+  transform: scale(1.08);
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--accent);
+}
