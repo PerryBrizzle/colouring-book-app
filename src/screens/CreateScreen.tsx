@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPuzzle } from '../db';
-import { CancelledError, Generator, loadPhoto } from '../generator';
-import { DEFAULT_OPTIONS } from '../pipeline';
+import { CancelledError, decodePhoto, Generator, scalePhoto } from '../generator';
+import { DEFAULT_OPTIONS, MAX_COLORS, MAX_DETAIL, MIN_COLORS, workingSizeFor } from '../pipeline';
 import { PuzzleView } from '../PuzzleView';
 import { PuzzleRenderer, renderThumbnail } from '../render';
 import type { GenerateOptions, Puzzle } from '../types';
@@ -12,12 +12,37 @@ interface Props {
   onCreated: (id: string) => void;
 }
 
-const DETAIL_NAMES = ['Very simple', 'Simple', 'Medium', 'Detailed', 'Very detailed'];
+const DETAIL_NAMES = [
+  'Very simple',
+  'Simple',
+  'Medium',
+  'Detailed',
+  'Very detailed',
+  'Fine',
+  'Extra fine',
+];
+
+const SETTINGS_KEY = 'colouring-book-settings';
+
+/** The sliders start wherever they were left last time. */
+function savedOptions(): GenerateOptions {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null');
+    const colors = Math.round(Number(saved?.colors));
+    const detail = Math.round(Number(saved?.detail));
+    if (colors >= MIN_COLORS && colors <= MAX_COLORS && detail >= 1 && detail <= MAX_DETAIL) {
+      return { colors, detail };
+    }
+  } catch {
+    // Storage unavailable or corrupt: fall through to the defaults.
+  }
+  return DEFAULT_OPTIONS;
+}
 
 /** Preview a photo as a colour-by-number picture and tune it before starting. */
 export function CreateScreen({ file, onCancel, onCreated }: Props) {
-  const [image, setImage] = useState<ImageData | null>(null);
-  const [options, setOptions] = useState<GenerateOptions>(DEFAULT_OPTIONS);
+  const [bitmap, setBitmap] = useState<ImageBitmap | null>(null);
+  const [options, setOptions] = useState<GenerateOptions>(savedOptions);
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
@@ -31,13 +56,26 @@ export function CreateScreen({ file, onCancel, onCreated }: Props) {
 
   useEffect(() => {
     let alive = true;
-    loadPhoto(file)
-      .then((img) => alive && setImage(img))
+    let decoded: ImageBitmap | null = null;
+    decodePhoto(file)
+      .then((b) => {
+        if (!alive) return b.close();
+        decoded = b;
+        setBitmap(b);
+      })
       .catch(() => alive && setError("Couldn't read that image. Try a JPEG or PNG photo."));
     return () => {
       alive = false;
+      decoded?.close();
     };
   }, [file]);
+
+  // The finest detail levels convert a larger copy of the photo.
+  const workingSize = workingSizeFor(options.detail);
+  const image = useMemo(
+    () => (bitmap ? scalePhoto(bitmap, workingSize) : null),
+    [bitmap, workingSize],
+  );
 
   // Re-convert whenever the photo or a slider changes.
   useEffect(() => {
@@ -92,6 +130,11 @@ export function CreateScreen({ file, onCancel, onCreated }: Props) {
     if (!puzzle || !renderer || saving) return;
     setSaving(true);
     try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(options));
+    } catch {
+      // Not being able to remember the sliders is harmless.
+    }
+    try {
       const thumb = await renderThumbnail(renderer, new Uint8Array(puzzle.regionCount));
       onCreated(await createPuzzle(puzzle, thumb));
     } catch (e) {
@@ -137,8 +180,8 @@ export function CreateScreen({ file, onCancel, onCreated }: Props) {
           </span>
           <input
             type="range"
-            min={6}
-            max={40}
+            min={MIN_COLORS}
+            max={MAX_COLORS}
             step={1}
             value={options.colors}
             onChange={(e) => setOptions({ ...options, colors: Number(e.target.value) })}
@@ -151,7 +194,7 @@ export function CreateScreen({ file, onCancel, onCreated }: Props) {
           <input
             type="range"
             min={1}
-            max={5}
+            max={MAX_DETAIL}
             step={1}
             value={options.detail}
             onChange={(e) => setOptions({ ...options, detail: Number(e.target.value) })}

@@ -5,10 +5,19 @@ import { chamferDistance, labelRegions, mergeSmallRegions, modeFilter } from './
 import { kuwahara } from './smooth';
 import { traceRegions } from './trace';
 
-/** Longest side, in pixels, that photos are scaled to before conversion. */
-export const WORKING_SIZE = 1000;
-
+export const MIN_COLORS = 6;
+export const MAX_COLORS = 80;
+export const MAX_DETAIL = 7;
 export const DEFAULT_OPTIONS: GenerateOptions = { colors: 20, detail: 3 };
+
+/**
+ * Longest side, in pixels, that a photo is scaled to before conversion. The
+ * finest detail levels work on a bigger copy so that their very small
+ * sections still have clean shapes.
+ */
+export function workingSizeFor(detail: number): number {
+  return detail >= 7 ? 1500 : detail === 6 ? 1250 : 1000;
+}
 
 interface Tuning {
   smoothRadius: number;
@@ -17,17 +26,29 @@ interface Tuning {
   minRadius: number;
 }
 
-/** Maps the 1–5 detail slider onto the pipeline's knobs. */
+// One row per detail level, for a 1000 x 750 picture:
+//   smoothing radius, border-cleaning radius, smallest section area,
+//   smallest section "inner radius" (how big a circle must fit inside).
+const LEVELS = [
+  [9, 5, 1400, 7],
+  [8, 4, 640, 5.8],
+  [6, 4, 290, 4.6],
+  [5, 3, 132, 3.4],
+  [3, 2, 60, 2.2],
+  [2, 1, 36, 1.8],
+  [1, 1, 20, 1.5],
+];
+
+/** Maps the detail slider onto the pipeline's knobs. */
 export function tuningFor(detail: number, pixelCount: number): Tuning {
-  const t = Math.max(0, Math.min(1, (detail - 1) / 4));
-  // Knobs are specified for a full-size (1000 x 750) picture and shrink with it.
+  const level = LEVELS[Math.max(1, Math.min(MAX_DETAIL, Math.round(detail))) - 1];
+  // Knobs are specified for a 1000 x 750 picture and scale with the real size.
   const scale = Math.sqrt(pixelCount / 750000);
-  const lerp = (a: number, b: number) => a + (b - a) * t;
   return {
-    smoothRadius: Math.max(1, Math.round(lerp(9, 3) * scale)),
-    modeRadius: Math.max(1, Math.round(lerp(5, 2) * scale)),
-    minArea: Math.max(12, Math.round(1400 * Math.pow(60 / 1400, t) * scale * scale)),
-    minRadius: Math.max(1.5, lerp(7, 2.2) * scale),
+    smoothRadius: Math.max(1, Math.round(level[0] * scale)),
+    modeRadius: Math.max(1, Math.round(level[1] * scale)),
+    minArea: Math.max(12, Math.round(level[2] * scale * scale)),
+    minRadius: Math.max(1.5, level[3] * scale),
   };
 }
 
@@ -49,8 +70,12 @@ export function generatePuzzle(
   const original = rgbaToOklab(rgba, n);
   const smooth = kuwahara(original.L, original.A, original.B, w, h, tune.smoothRadius);
 
-  const clustered = kmeans(smooth.L, smooth.A, smooth.B, n, options.colors);
-  const { centers, labels } = mergeCloseColors(clustered.centers, clustered.labels, 0.035);
+  const wanted = Math.max(MIN_COLORS, Math.min(MAX_COLORS, Math.round(options.colors)));
+  const clustered = kmeans(smooth.L, smooth.A, smooth.B, n, wanted);
+  // Near-identical paints are merged so two numbers never look the same. With
+  // a big palette the colours are meant to sit closer, so the bar is lowered.
+  const tooClose = 0.035 * Math.min(1, Math.pow(24 / wanted, 0.75));
+  const { centers, labels } = mergeCloseColors(clustered.centers, clustered.labels, tooClose);
   const k = centers.length / 3;
 
   const colors = modeFilter(labels, w, h, k, tune.modeRadius);
@@ -149,7 +174,10 @@ export function generatePuzzle(
     }
   }
 
-  const geometry = traceRegions(reg, w, h, count, { smoothPasses: 6, tolerance: 0.04 });
+  const geometry = traceRegions(reg, w, h, count, {
+    smoothPasses: 6,
+    tolerance: 0.04 * Math.max(1, Math.max(w, h) / 1000),
+  });
 
   return {
     width: w,

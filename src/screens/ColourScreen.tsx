@@ -109,7 +109,7 @@ function Colouring({
   const fill = useCallback(
     (r: number) => {
       filled[r] = 1;
-      renderer.invalidateOutline();
+      renderer.invalidateRegion(r);
       viewRef.current?.requestDraw();
       navigator.vibrate?.(8);
       const c = puzzle.regionColor[r];

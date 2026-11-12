@@ -2,7 +2,7 @@
 export interface GenerateOptions {
   /** Target number of palette colours (the result may use slightly fewer). */
   colors: number;
-  /** 1 = few big sections … 5 = many small sections. */
+  /** 1 = few big sections … 7 = very many small sections. */
   detail: number;
 }
 

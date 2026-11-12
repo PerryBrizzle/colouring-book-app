@@ -15,6 +15,7 @@ export interface DrawState {
   showNumbers: boolean;
 }
 
+const ARCS_PER_CHUNK = 64;
 const PAPER = '#ffffff';
 const LINE = '#4a4a55';
 
@@ -23,13 +24,41 @@ export class PuzzleRenderer {
   readonly puzzle: Puzzle;
   readonly colorCss: string[];
   private paths: (Path2D | undefined)[];
-  private outline: Path2D | null = null;
   private checker: CanvasPattern | null = null;
   private checkerDpr = 0;
+
+  // Outlines are kept in chunks of neighbouring arcs. Colouring a section only
+  // rebuilds the few chunks its border touches, which keeps taps instant even
+  // on pictures with thousands of sections. null = rebuild, false = nothing to draw.
+  private chunks: (Path2D | false | null)[];
+  private chunkBox: Float32Array;
 
   constructor(puzzle: Puzzle) {
     this.puzzle = puzzle;
     this.paths = new Array(puzzle.regionCount);
+
+    const arcCount = puzzle.arcStart.length - 1;
+    const chunkCount = Math.ceil(arcCount / ARCS_PER_CHUNK);
+    this.chunks = new Array(chunkCount).fill(null);
+    this.chunkBox = new Float32Array(chunkCount * 4);
+    for (let c = 0; c < chunkCount; c++) {
+      let x0 = Infinity;
+      let y0 = Infinity;
+      let x1 = -Infinity;
+      let y1 = -Infinity;
+      const from = puzzle.arcStart[c * ARCS_PER_CHUNK];
+      const to = puzzle.arcStart[Math.min(arcCount, (c + 1) * ARCS_PER_CHUNK)];
+      for (let q = from; q < to; q++) {
+        const x = puzzle.arcPoints[q * 2];
+        const y = puzzle.arcPoints[q * 2 + 1];
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+      this.chunkBox.set([x0, y0, x1, y1], c * 4);
+    }
+
     this.colorCss = [];
     for (let i = 0; i < puzzle.palette.length; i += 3) {
       this.colorCss.push(
@@ -38,9 +67,19 @@ export class PuzzleRenderer {
     }
   }
 
-  /** Call after `filled` changes so lines between finished sections disappear. */
+  /** Call when `filled` has changed wholesale (a different picture state). */
   invalidateOutline(): void {
-    this.outline = null;
+    this.chunks.fill(null);
+  }
+
+  /** Call after one section is coloured so the lines round it are redrawn. */
+  invalidateRegion(r: number): void {
+    const p = this.puzzle;
+    const from = p.ringStart[p.regionRingStart[r]];
+    const to = p.ringStart[p.regionRingStart[r + 1]];
+    for (let j = from; j < to; j++) {
+      this.chunks[Math.floor((Math.abs(p.ringArcs[j]) - 1) / ARCS_PER_CHUNK)] = null;
+    }
   }
 
   private addArc(path: Path2D, arc: number, reversed: boolean, skipFirst: boolean): void {
@@ -78,20 +117,22 @@ export class PuzzleRenderer {
     return path;
   }
 
-  private outlinePath(filled: Uint8Array): Path2D {
-    if (this.outline) return this.outline;
+  private outlineChunk(c: number, filled: Uint8Array): Path2D | false {
+    const cached = this.chunks[c];
+    if (cached !== null) return cached;
     const p = this.puzzle;
     const path = new Path2D();
-    const arcCount = p.arcStart.length - 1;
-    for (let i = 0; i < arcCount; i++) {
+    const end = Math.min(p.arcStart.length - 1, (c + 1) * ARCS_PER_CHUNK);
+    let any = false;
+    for (let i = c * ARCS_PER_CHUNK; i < end; i++) {
       const a = p.arcRegions[i * 2];
       const b = p.arcRegions[i * 2 + 1];
       // A line is only needed while a section next to it is still blank.
       if ((a < 0 || filled[a]) && (b < 0 || filled[b])) continue;
       this.addArc(path, i, false, false);
+      any = true;
     }
-    this.outline = path;
-    return path;
+    return (this.chunks[c] = any ? path : false);
   }
 
   private checkerPattern(ctx: CanvasRenderingContext2D, dpr: number): CanvasPattern | null {
@@ -167,7 +208,14 @@ export class PuzzleRenderer {
 
     ctx.strokeStyle = LINE;
     ctx.lineWidth = Math.min(0.8, Math.max(0.35, s * 0.7)) / s;
-    ctx.stroke(this.outlinePath(state.filled));
+    const cb = this.chunkBox;
+    for (let c = 0; c < this.chunks.length; c++) {
+      if (cb[c * 4] > vx1 || cb[c * 4 + 2] < vx0 || cb[c * 4 + 1] > vy1 || cb[c * 4 + 3] < vy0) {
+        continue;
+      }
+      const path = this.outlineChunk(c, state.filled);
+      if (path) ctx.stroke(path);
+    }
 
     if (!state.showNumbers) return;
 

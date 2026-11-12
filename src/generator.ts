@@ -1,12 +1,15 @@
-import { WORKING_SIZE } from './pipeline';
 import type { GenerateOptions, Puzzle } from './types';
 import type { GenerateRequest, GenerateResponse } from './worker';
 
-/** Decodes a photo and scales it down to the size the converter works at. */
-export async function loadPhoto(file: Blob): Promise<ImageData> {
+/** Decodes a photo file. */
+export function decodePhoto(file: Blob): Promise<ImageBitmap> {
   // 'from-image' applies the phone's rotation tag so portraits stay upright.
-  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-  const scale = Math.min(1, WORKING_SIZE / Math.max(bitmap.width, bitmap.height));
+  return createImageBitmap(file, { imageOrientation: 'from-image' });
+}
+
+/** Scales a decoded photo down so its longest side is at most `maxSide` pixels. */
+export function scalePhoto(bitmap: ImageBitmap, maxSide: number): ImageData {
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const w = Math.max(1, Math.round(bitmap.width * scale));
   const h = Math.max(1, Math.round(bitmap.height * scale));
   const canvas = document.createElement('canvas');
@@ -17,7 +20,6 @@ export async function loadPhoto(file: Blob): Promise<ImageData> {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close();
   return ctx.getImageData(0, 0, w, h);
 }
 

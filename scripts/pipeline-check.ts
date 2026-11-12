@@ -91,6 +91,7 @@ for (const [w, h, colors, detail] of [
   [400, 300, 24, 5],
   [333, 500, 8, 1],
   [1000, 750, 20, 3],
+  [1500, 1125, 80, 7],
 ] as const) {
   const t0 = performance.now();
   const p = generatePuzzle(syntheticPhoto(w, h), w, h, { colors, detail });
