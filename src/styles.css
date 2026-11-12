@@ -170,6 +170,15 @@ button {
 .card .meter {
   margin: 0 10px 10px;
 }
+.version {
+  order: 99;
+  margin: auto 0 0;
+  padding: 12px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.6;
+}
 .notice {
   text-align: center;
   color: var(--muted);

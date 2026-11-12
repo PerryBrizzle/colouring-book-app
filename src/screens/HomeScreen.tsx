@@ -63,6 +63,7 @@ export function HomeScreen({ onNew, onOpen }: Props) {
         ))}
       </main>
 
+      <p className="version">Version {__APP_VERSION__}</p>
       {error && <p className="notice">{error}</p>}
       {items?.length === 0 && (
         <p className="notice">Pick a photo to turn it into a colour-by-number picture.</p>

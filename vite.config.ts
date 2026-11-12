@@ -34,8 +34,12 @@ function offlineManifest(): Plugin {
   };
 }
 
+// Shown at the bottom of the library so it's easy to tell which build a phone is running.
+const version = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
 export default defineConfig({
   plugins: [react(), offlineManifest()],
+  define: { __APP_VERSION__: JSON.stringify(version) },
   // Relative paths so the built app works from any folder on a static host.
   base: './',
   worker: { format: 'es' },
