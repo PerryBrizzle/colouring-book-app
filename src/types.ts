@@ -25,6 +25,16 @@ export interface Puzzle {
   /** Palette index of each region. */
   regionColor: Uint8Array;
   regionArea: Uint32Array;
+  /**
+   * Each region's own average colour in the photo (RGB triples). Missing on
+   * pictures made before this was added.
+   */
+  regionShade?: Uint8Array;
+  /**
+   * Colour each section with its own shade rather than its paint's flat
+   * colour, so the finished picture is closer to the photo.
+   */
+  shaded?: boolean;
   /** Bounding box of each region: minX, minY, maxX, maxY (4 per region). */
   regionBox: Uint16Array;
 

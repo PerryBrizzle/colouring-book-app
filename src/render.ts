@@ -23,6 +23,9 @@ const LINE = '#4a4a55';
 export class PuzzleRenderer {
   readonly puzzle: Puzzle;
   readonly colorCss: string[];
+  /** Fill each section with its own shade instead of its paint's flat colour. */
+  shaded: boolean;
+  private shadeCss: string[] | null = null;
   private paths: (Path2D | undefined)[];
   private checker: CanvasPattern | null = null;
   private checkerDpr = 0;
@@ -65,6 +68,21 @@ export class PuzzleRenderer {
         `rgb(${puzzle.palette[i]},${puzzle.palette[i + 1]},${puzzle.palette[i + 2]})`,
       );
     }
+    const shade = puzzle.regionShade;
+    if (shade) {
+      this.shadeCss = [];
+      for (let i = 0; i < shade.length; i += 3) {
+        this.shadeCss.push(`rgb(${shade[i]},${shade[i + 1]},${shade[i + 2]})`);
+      }
+    }
+    this.shaded = puzzle.shaded === true;
+  }
+
+  /** The colour a section is painted once it has been coloured in. */
+  fillCss(r: number): string {
+    return this.shaded && this.shadeCss
+      ? this.shadeCss[r]
+      : this.colorCss[this.puzzle.regionColor[r]];
   }
 
   /** Call when `filled` has changed wholesale (a different picture state). */
@@ -194,7 +212,7 @@ export class PuzzleRenderer {
     for (let r = 0; r < p.regionCount; r++) {
       if (!visible(r)) continue;
       if (state.filled[r]) {
-        const css = this.colorCss[p.regionColor[r]];
+        const css = this.fillCss(r);
         const path = this.regionPath(r);
         ctx.fillStyle = css;
         ctx.strokeStyle = css;

@@ -31,9 +31,9 @@ interface Tuning {
 //   smallest section "inner radius" (how big a circle must fit inside).
 const LEVELS = [
   [9, 5, 1400, 7],
-  [8, 4, 640, 5.8],
-  [6, 4, 290, 4.6],
-  [5, 3, 132, 3.4],
+  [7.5, 4.25, 637, 5.8],
+  [6, 3.5, 290, 4.6],
+  [4.5, 2.75, 132, 3.4],
   [3, 2, 60, 2.2],
   [2, 1, 36, 1.8],
   [1, 1, 20, 1.5],
@@ -133,6 +133,7 @@ export function generatePuzzle(
   const peak = new Int32Array(count);
   const sumX = new Float64Array(count);
   const sumY = new Float64Array(count);
+  const shadeSum = new Float64Array(count * 3);
   const regionBox = new Uint16Array(count * 4);
   for (let r = 0; r < count; r++) {
     regionBox[r * 4] = 65535;
@@ -145,6 +146,9 @@ export function generatePuzzle(
       if (dist[p] > peak[r]) peak[r] = dist[p];
       sumX[r] += x;
       sumY[r] += y;
+      shadeSum[r * 3] += original.L[p];
+      shadeSum[r * 3 + 1] += original.A[p];
+      shadeSum[r * 3 + 2] += original.B[p];
       const b = r * 4;
       if (x < regionBox[b]) regionBox[b] = x;
       if (y < regionBox[b + 1]) regionBox[b + 1] = y;
@@ -152,6 +156,19 @@ export function generatePuzzle(
       if (y + 1 > regionBox[b + 3]) regionBox[b + 3] = y + 1;
     }
   }
+  // Each section's own shade: the photo's true average colour over that section.
+  const regionShade = new Uint8Array(count * 3);
+  for (let r = 0; r < count; r++) {
+    const [red, green, blue] = oklabToRgb(
+      shadeSum[r * 3] / area[r],
+      shadeSum[r * 3 + 1] / area[r],
+      shadeSum[r * 3 + 2] / area[r],
+    );
+    regionShade[r * 3] = red;
+    regionShade[r * 3 + 1] = green;
+    regionShade[r * 3 + 2] = blue;
+  }
+
   // Number goes at the roomiest spot; among near-equal spots, the most central.
   const labelX = new Float32Array(count);
   const labelY = new Float32Array(count);
@@ -187,6 +204,8 @@ export function generatePuzzle(
     regionCount: count,
     regionColor,
     regionArea: Uint32Array.from(area),
+    regionShade,
+    shaded: true,
     regionBox,
     labelX,
     labelY,
@@ -202,6 +221,7 @@ export function puzzleBuffers(p: Puzzle): ArrayBuffer[] {
     p.regionMap,
     p.regionColor,
     p.regionArea,
+    ...(p.regionShade ? [p.regionShade] : []),
     p.regionBox,
     p.labelX,
     p.labelY,

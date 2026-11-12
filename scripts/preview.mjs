@@ -34,6 +34,8 @@ await settled();
 if (colours) await setSlider(0, colours);
 if (detail) await setSlider(1, detail);
 if (colours || detail) await settled();
+// Optional 5th argument "flat": switch Exact shades off for comparison.
+if (process.argv[6] === 'flat') await page.locator('.toggle input').uncheck();
 console.log(`${photo}: ${await page.locator('.panel-foot .muted').textContent()}`);
 
 // Hide the toggle so it doesn't cover the picture.

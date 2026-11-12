@@ -39,10 +39,19 @@ function savedOptions(): GenerateOptions {
   return DEFAULT_OPTIONS;
 }
 
+function savedShaded(): boolean {
+  try {
+    return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null')?.shaded !== false;
+  } catch {
+    return true;
+  }
+}
+
 /** Preview a photo as a colour-by-number picture and tune it before starting. */
 export function CreateScreen({ file, onCancel, onCreated }: Props) {
   const [bitmap, setBitmap] = useState<ImageBitmap | null>(null);
   const [options, setOptions] = useState<GenerateOptions>(savedOptions);
+  const [shaded, setShaded] = useState(savedShaded);
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
@@ -121,22 +130,23 @@ export function CreateScreen({ file, onCancel, onCreated }: Props) {
       selected: -1,
       showNumbers: !coloured,
     };
+    renderer.shaded = shaded;
     renderer.invalidateOutline();
     if (viewRef.current) viewRef.current.setRenderer(renderer, state);
     else viewRef.current = new PuzzleView(canvasRef.current, renderer, state);
-  }, [renderer, mode]);
+  }, [renderer, mode, shaded]);
 
   const start = async () => {
     if (!puzzle || !renderer || saving) return;
     setSaving(true);
     try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(options));
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...options, shaded }));
     } catch {
       // Not being able to remember the sliders is harmless.
     }
     try {
       const thumb = await renderThumbnail(renderer, new Uint8Array(puzzle.regionCount));
-      onCreated(await createPuzzle(puzzle, thumb));
+      onCreated(await createPuzzle({ ...puzzle, shaded }, thumb));
     } catch (e) {
       setError(`Couldn't save the picture: ${(e as Error)?.message ?? e}`);
       setSaving(false);
@@ -198,6 +208,20 @@ export function CreateScreen({ file, onCancel, onCreated }: Props) {
             step={1}
             value={options.detail}
             onChange={(e) => setOptions({ ...options, detail: Number(e.target.value) })}
+          />
+        </label>
+        <label className="toggle">
+          <span>
+            Exact shades
+            <small>Each section keeps its own shade from the photo</small>
+          </span>
+          <input
+            type="checkbox"
+            checked={shaded}
+            onChange={(e) => {
+              setShaded(e.target.checked);
+              setMode('colour'); // show the effect straight away
+            }}
           />
         </label>
         <div className="panel-foot">

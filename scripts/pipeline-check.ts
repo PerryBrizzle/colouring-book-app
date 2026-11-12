@@ -106,6 +106,7 @@ for (const [w, h, colors, detail] of [
   let areaSum = 0;
   for (let r = 0; r < p.regionCount; r++) areaSum += p.regionArea[r];
   check(areaSum === w * h, 'region areas should cover the picture');
+  check(p.regionShade?.length === p.regionCount * 3, 'every region should have its own shade');
 
   // Each arc is used once by each of its two regions (once if it is on the picture edge).
   const uses = new Int32Array(arcCount);
